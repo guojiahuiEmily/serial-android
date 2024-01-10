@@ -10,7 +10,7 @@ ARGS=$(getopt -o "dca" -l "debug,clean,archive" -n "build-libs.sh" -- "$@");
 
 eval set -- "$ARGS";
 
-#cd libserial/src/main
+cd libserial/src/main
 
 JNI_ARGS="NDK_LIBS_OUT=jniLibs"
 BUILD_TASK="assembleRelease"
@@ -45,8 +45,7 @@ done
 # Remove '--'
 shift
 
-ndk-build $JNI_ARGS  APP_BUILD_SCRIPT=/Users/fengguo/Downloads/serial-android-master/libserial/src/main/jni/Android.mk
-
+ndk-build $JNI_ARGS
 
 cd ../../..
 

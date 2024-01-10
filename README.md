@@ -1,9 +1,14 @@
 ## build so
+- 方法1：
+用最新版ndk，在当前根目录下执行./build-libs.sh
+- 方法2：
 export ANDROID_NDK_HOME=~/Library/Android/sdk/ndk/android-ndk-r21e
 export PATH=$PATH:$ANDROID_NDK_HOME
 
-cd /Users/fengguo/Downloads/serial-android-master/libserial/src/main
-./build
+cd libserial/src/main
+
+#先修改这个文件内的路径/Users为真实路径
+./build-libs.sh
 
 # Serial Port communication library for Android (with Java API)
 
