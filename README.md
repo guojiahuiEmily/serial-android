@@ -1,3 +1,10 @@
+## build so
+export ANDROID_NDK_HOME=~/Library/Android/sdk/ndk/android-ndk-r21e
+export PATH=$PATH:$ANDROID_NDK_HOME
+
+cd /Users/fengguo/Downloads/serial-android-master/libserial/src/main
+./build
+
 # Serial Port communication library for Android (with Java API)
 
 This is a serial port library for Android, with both JNI API and Java API.

@@ -17,7 +17,7 @@
 #include <cstdarg>
 #include <cstdlib>
 
-#include <glob.h>
+//#include <glob.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -33,7 +33,7 @@ using std::string;
 using std::cout;
 using std::endl;
 
-static vector<string> glob(const vector<string>& patterns);
+//static vector<string> glob(const vector<string>& patterns);
 static string basename(const string& path);
 static string dirname(const string& path);
 static bool path_exists(const string& path);
@@ -44,34 +44,34 @@ static string read_line(const string& file);
 static string usb_sysfs_hw_string(const string& sysfs_path);
 static string format(const char* format, ...);
 
-vector<string>
-glob(const vector<string>& patterns)
-{
-    vector<string> paths_found;
-
-	if(patterns.size() == 0)
-	    return paths_found;
-
-    glob_t glob_results;
-
-    int glob_retval = glob(patterns[0].c_str(), 0, NULL, &glob_results);
-
-    vector<string>::const_iterator iter = patterns.begin();
-
-    while(++iter != patterns.end())
-    {
-        glob_retval = glob(iter->c_str(), GLOB_APPEND, NULL, &glob_results);
-    }
-
-    for(int path_index = 0; path_index < glob_results.gl_pathc; path_index++)
-    {
-        paths_found.push_back(glob_results.gl_pathv[path_index]);
-    }
-
-    globfree(&glob_results);
-
-    return paths_found;
-}
+//vector<string>
+//glob(const vector<string>& patterns)
+//{
+//    vector<string> paths_found;
+//
+//	if(patterns.size() == 0)
+//	    return paths_found;
+//
+//    glob_t glob_results;
+//
+//    int glob_retval = glob(patterns[0].c_str(), 0, NULL, &glob_results);
+//
+//    vector<string>::const_iterator iter = patterns.begin();
+//
+//    while(++iter != patterns.end())
+//    {
+//        glob_retval = glob(iter->c_str(), GLOB_APPEND, NULL, &glob_results);
+//    }
+//
+//    for(int path_index = 0; path_index < glob_results.gl_pathc; path_index++)
+//    {
+//        paths_found.push_back(glob_results.gl_pathv[path_index]);
+//    }
+//
+//    globfree(&glob_results);
+//
+//    return paths_found;
+//}
 
 string
 basename(const string& path)
@@ -299,14 +299,11 @@ serial::list_ports()
 {
     vector<PortInfo> results;
 
-    vector<string> search_globs;
-    search_globs.push_back("/dev/ttyACM*");
-    search_globs.push_back("/dev/ttyS*");
-    search_globs.push_back("/dev/ttyUSB*");
-    search_globs.push_back("/dev/tty.*");
-    search_globs.push_back("/dev/cu.*");
+    vector<string> devices_found;
+    devices_found.push_back("/dev/ttyS0");
+    devices_found.push_back("/dev/ttyS4");
 
-    vector<string> devices_found = glob( search_globs );
+//    vector<string> devices_found = glob( search_globs );
 
     vector<string>::iterator iter = devices_found.begin();
 

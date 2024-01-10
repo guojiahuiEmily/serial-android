@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 32
 
     //useDeprecatedNdk true
 
@@ -18,8 +18,8 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 28
-        targetSdkVersion 30
+        minSdkVersion 16
+        targetSdkVersion 32
         versionCode 1
         versionName "1.0"
     }

@@ -119,10 +119,14 @@ Serial::SerialImpl::SerialImpl (const string &port, unsigned long baudrate,
     baudrate_ (baudrate), parity_ (parity),
     bytesize_ (bytesize), stopbits_ (stopbits), flowcontrol_ (flowcontrol)
 {
-  pthread_mutex_init(&this->read_mutex, NULL);
-  pthread_mutex_init(&this->write_mutex, NULL);
-  if (port_.empty () == false)
-    open ();
+  try {
+    pthread_mutex_init(&this->read_mutex, NULL);
+    pthread_mutex_init(&this->write_mutex, NULL);
+    if (port_.empty() == false)
+      open();
+  }catch(...){
+    //none
+  }
 }
 
 Serial::SerialImpl::~SerialImpl ()
@@ -135,31 +139,36 @@ Serial::SerialImpl::~SerialImpl ()
 void
 Serial::SerialImpl::open ()
 {
-  if (port_.empty ()) {
-    throw invalid_argument ("Empty port is invalid.");
-  }
-  if (is_open_ == true) {
-    throw SerialException ("Serial port already open.");
-  }
-
-  fd_ = ::open (port_.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-
-  if (fd_ == -1) {
-    switch (errno) {
-    case EINTR:
-      // Recurse because this is a recoverable error.
-      open ();
-      return;
-    case ENFILE:
-    case EMFILE:
-      THROW (IOException, "Too many file handles open.");
-    default:
-      THROW (IOException, errno);
+  try {
+    if (port_.empty()) {
+      throw invalid_argument("Empty port is invalid.");
     }
-  }
+    if (is_open_ == true) {
+      throw SerialException("Serial port already open.");
+    }
 
-  reconfigurePort();
-  is_open_ = true;
+    fd_ = ::open(port_.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+    if (fd_ == -1) {
+      switch (errno) {
+        case EINTR:
+          // Recurse because this is a recoverable error.
+          open();
+              return;
+        case ENFILE:
+        case EMFILE:
+          THROW(IOException, "Too many file handles open.");
+        default:
+          THROW(IOException, errno);
+      }
+    }
+
+    reconfigurePort();
+    is_open_ = true;
+
+  }catch(...){
+    //none
+  }
 }
 
 void
@@ -460,17 +469,21 @@ Serial::SerialImpl::reconfigurePort ()
 void
 Serial::SerialImpl::close ()
 {
-  if (is_open_ == true) {
-    if (fd_ != -1) {
-      int ret;
-      ret = ::close (fd_);
-      if (ret == 0) {
-        fd_ = -1;
-      } else {
-        THROW (IOException, errno);
+  try{
+    if (is_open_ == true) {
+      if (fd_ != -1) {
+        int ret;
+        ret = ::close (fd_);
+        if (ret == 0) {
+          fd_ = -1;
+        } else {
+          THROW (IOException, errno);
+        }
       }
+      is_open_ = false;
     }
-    is_open_ = false;
+  }catch(...){
+    //none
   }
 }
 
@@ -535,161 +548,175 @@ Serial::SerialImpl::waitByteTimes (size_t count)
 size_t
 Serial::SerialImpl::read (uint8_t *buf, size_t size)
 {
-  // If the port is not open, throw
-  if (!is_open_) {
-    throw PortNotOpenedException ("Serial::read");
-  }
-  size_t bytes_read = 0;
-
-  // Calculate total timeout in milliseconds t_c + (t_m * N)
-  long total_timeout_ms = timeout_.read_timeout_constant;
-  total_timeout_ms += timeout_.read_timeout_multiplier * static_cast<long> (size);
-  MillisecondTimer total_timeout(total_timeout_ms);
-
-  // Pre-fill buffer with available bytes
-  {
-    ssize_t bytes_read_now = ::read (fd_, buf, size);
-    if (bytes_read_now > 0) {
-      bytes_read = bytes_read_now;
+  try{
+    // If the port is not open, throw
+    if (!is_open_)
+    {
+      throw PortNotOpenedException ("Serial::read");
     }
-  }
+    size_t bytes_read = 0;
 
-  while (bytes_read < size) {
-    int64_t timeout_remaining_ms = total_timeout.remaining();
-    if (timeout_remaining_ms <= 0) {
-      // Timed out
-      break;
+    // Calculate total timeout in milliseconds t_c + (t_m * N)
+    long total_timeout_ms = timeout_.read_timeout_constant;
+    total_timeout_ms += timeout_.read_timeout_multiplier * static_cast<long> (size);
+    MillisecondTimer total_timeout(total_timeout_ms);
+
+    // Pre-fill buffer with available bytes
+    {
+      ssize_t bytes_read_now = ::read (fd_, buf, size);
+      if (bytes_read_now > 0) {
+        bytes_read = bytes_read_now;
+      }
     }
-    // Timeout for the next select is whichever is less of the remaining
-    // total read timeout and the inter-byte timeout.
-    uint32_t timeout = std::min(static_cast<uint32_t> (timeout_remaining_ms),
-                                timeout_.inter_byte_timeout);
-    // Wait for the device to be readable, and then attempt to read.
-    if (waitReadable(timeout)) {
-      // If it's a fixed-length multi-byte read, insert a wait here so that
-      // we can attempt to grab the whole thing in a single IO call. Skip
-      // this wait if a non-max inter_byte_timeout is specified.
-      if (size > 1 && timeout_.inter_byte_timeout == Timeout::max()) {
-        size_t bytes_available = available();
-        if (bytes_available + bytes_read < size) {
-          waitByteTimes(size - (bytes_available + bytes_read));
-        }
-      }
-      // This should be non-blocking returning only what is available now
-      //  Then returning so that select can block again.
-      ssize_t bytes_read_now =
-        ::read (fd_, buf + bytes_read, size - bytes_read);
-      // read should always return some data as select reported it was
-      // ready to read when we get to this point.
-      if (bytes_read_now < 1) {
-        // Disconnected devices, at least on Linux, show the
-        // behavior that they are always ready to read immediately
-        // but reading returns nothing.
-        throw SerialException ("device reports readiness to read but "
-                               "returned no data (device disconnected?)");
-      }
-      // Update bytes_read
-      bytes_read += static_cast<size_t> (bytes_read_now);
-      // If bytes_read == size then we have read everything we need
-      if (bytes_read == size) {
+
+    while (bytes_read < size) {
+      int64_t timeout_remaining_ms = total_timeout.remaining();
+
+      if (timeout_remaining_ms <= 0) {
+        // Timed out
+  //      return -2;
         break;
       }
-      // If bytes_read < size then we have more to read
-      if (bytes_read < size) {
-        continue;
-      }
-      // If bytes_read > size then we have over read, which shouldn't happen
-      if (bytes_read > size) {
-        throw SerialException ("read over read, too many bytes where "
-                               "read, this shouldn't happen, might be "
-                               "a logical error!");
+      // Timeout for the next select is whichever is less of the remaining
+      // total read timeout and the inter-byte timeout.
+      uint32_t timeout = std::min(static_cast<uint32_t> (timeout_remaining_ms),
+                                  timeout_.inter_byte_timeout);
+      // Wait for the device to be readable, and then attempt to read.
+      if (waitReadable(timeout))
+      {
+        // If it's a fixed-length multi-byte read, insert a wait here so that
+        // we can attempt to grab the whole thing in a single IO call. Skip
+        // this wait if a non-max inter_byte_timeout is specified.
+  //      if (size > 1 && timeout_.inter_byte_timeout == Timeout::max()) {
+  //        size_t bytes_available = available();
+  //        if (bytes_available + bytes_read < size) {
+  //          waitByteTimes(size - (bytes_available + bytes_read));
+  //        }
+  //      }
+        // This should be non-blocking returning only what is available now
+        //  Then returning so that select can block again.
+        ssize_t bytes_read_now =
+          ::read (fd_, buf + bytes_read, size - bytes_read);
+        // read should always return some data as select reported it was
+        // ready to read when we get to this point.
+  //      if (bytes_read_now < 1) {
+  //        // Disconnected devices, at least on Linux, show the
+  //        // behavior that they are always ready to read immediately
+  //        // but reading returns nothing.
+  //        throw SerialException ("device reports readiness to read but "
+  //                               "returned no data (device disconnected?)");
+  //      }
+        // Update bytes_read
+        if (bytes_read_now >0) {
+            bytes_read += static_cast<size_t> (bytes_read_now);
+        }
+        // If bytes_read == size then we have read everything we need
+        if (bytes_read >= size) {
+          break;
+        }
+        // If bytes_read < size then we have more to read
+  //      if (bytes_read < size) {
+  //        continue;
+  //      }
+        // If bytes_read > size then we have over read, which shouldn't happen
+  //      if (bytes_read > size) {
+  //        throw SerialException ("read over read, too many bytes where "
+  //                               "read, this shouldn't happen, might be "
+  //                               "a logical error!");
+  //      }
       }
     }
+    return bytes_read;
+  }catch(...){
+    return -3;
   }
-  return bytes_read;
 }
 
 size_t
 Serial::SerialImpl::write (const uint8_t *data, size_t length)
 {
-  if (is_open_ == false) {
-    throw PortNotOpenedException ("Serial::write");
-  }
-  fd_set writefds;
-  size_t bytes_written = 0;
-
-  // Calculate total timeout in milliseconds t_c + (t_m * N)
-  long total_timeout_ms = timeout_.write_timeout_constant;
-  total_timeout_ms += timeout_.write_timeout_multiplier * static_cast<long> (length);
-  MillisecondTimer total_timeout(total_timeout_ms);
-
-  while (bytes_written < length) {
-    int64_t timeout_remaining_ms = total_timeout.remaining();
-    if (timeout_remaining_ms <= 0) {
-      // Timed out
-      break;
+  try {
+    if (is_open_ == false) {
+      throw PortNotOpenedException("Serial::write");
     }
-    timespec timeout(timespec_from_ms(timeout_remaining_ms));
+    fd_set writefds;
+    size_t bytes_written = 0;
 
-    FD_ZERO (&writefds);
-    FD_SET (fd_, &writefds);
+    // Calculate total timeout in milliseconds t_c + (t_m * N)
+    long total_timeout_ms = timeout_.write_timeout_constant;
+    total_timeout_ms += timeout_.write_timeout_multiplier * static_cast<long> (length);
+    MillisecondTimer total_timeout(total_timeout_ms);
 
-    // Do the select
-    int r = pselect (fd_ + 1, NULL, &writefds, NULL, &timeout, NULL);
-
-    // Figure out what happened by looking at select's response 'r'
-    /** Error **/
-    if (r < 0) {
-      // Select was interrupted, try again
-      if (errno == EINTR) {
-        continue;
+    while (bytes_written < length) {
+      int64_t timeout_remaining_ms = total_timeout.remaining();
+      if (timeout_remaining_ms <= 0) {
+        // Timed out
+        break;
       }
-      // Otherwise there was some error
-      THROW (IOException, errno);
-    }
-    /** Timeout **/
-    if (r == 0) {
-      break;
-    }
-    /** Port ready to write **/
-    if (r > 0) {
-      // Make sure our file descriptor is in the ready to write list
-      if (FD_ISSET (fd_, &writefds)) {
-        // This will write some
-        ssize_t bytes_written_now =
-          ::write (fd_, data + bytes_written, length - bytes_written);
-        // write should always return some data as select reported it was
-        // ready to write when we get to this point.
-        if (bytes_written_now < 1) {
-          // Disconnected devices, at least on Linux, show the
-          // behavior that they are always ready to write immediately
-          // but writing returns nothing.
-          throw SerialException ("device reports readiness to write but "
-                                 "returned no data (device disconnected?)");
-        }
-        // Update bytes_written
-        bytes_written += static_cast<size_t> (bytes_written_now);
-        // If bytes_written == size then we have written everything we need to
-        if (bytes_written == length) {
-          break;
-        }
-        // If bytes_written < size then we have more to write
-        if (bytes_written < length) {
+      timespec timeout(timespec_from_ms(timeout_remaining_ms));
+
+      FD_ZERO(&writefds);
+      FD_SET(fd_, &writefds);
+
+      // Do the select
+      int r = pselect(fd_ + 1, NULL, &writefds, NULL, &timeout, NULL);
+
+      // Figure out what happened by looking at select's response 'r'
+      /** Error **/
+      if (r < 0) {
+        // Select was interrupted, try again
+        if (errno == EINTR) {
           continue;
         }
-        // If bytes_written > size then we have over written, which shouldn't happen
-        if (bytes_written > length) {
-          throw SerialException ("write over wrote, too many bytes where "
-                                 "written, this shouldn't happen, might be "
-                                 "a logical error!");
-        }
+        // Otherwise there was some error
+        THROW(IOException, errno);
       }
-      // This shouldn't happen, if r > 0 our fd has to be in the list!
-      THROW (IOException, "select reports ready to write, but our fd isn't"
-                          " in the list, this shouldn't happen!");
+      /** Timeout **/
+      if (r == 0) {
+        break;
+      }
+      /** Port ready to write **/
+      if (r > 0) {
+        // Make sure our file descriptor is in the ready to write list
+        if (FD_ISSET(fd_, &writefds)) {
+          // This will write some
+          ssize_t bytes_written_now =
+                  ::write(fd_, data + bytes_written, length - bytes_written);
+          // write should always return some data as select reported it was
+          // ready to write when we get to this point.
+          if (bytes_written_now < 1) {
+            // Disconnected devices, at least on Linux, show the
+            // behavior that they are always ready to write immediately
+            // but writing returns nothing.
+            throw SerialException("device reports readiness to write but "
+                                  "returned no data (device disconnected?)");
+          }
+          // Update bytes_written
+          bytes_written += static_cast<size_t> (bytes_written_now);
+          // If bytes_written == size then we have written everything we need to
+          if (bytes_written == length) {
+            break;
+          }
+          // If bytes_written < size then we have more to write
+          if (bytes_written < length) {
+            continue;
+          }
+          // If bytes_written > size then we have over written, which shouldn't happen
+          if (bytes_written > length) {
+            throw SerialException("write over wrote, too many bytes where "
+                                  "written, this shouldn't happen, might be "
+                                  "a logical error!");
+          }
+        }
+        // This shouldn't happen, if r > 0 our fd has to be in the list!
+        THROW(IOException, "select reports ready to write, but our fd isn't"
+                           " in the list, this shouldn't happen!");
+      }
     }
+    return bytes_written;
+  }catch(...){
+    return 0;
   }
-  return bytes_written;
 }
 
 void

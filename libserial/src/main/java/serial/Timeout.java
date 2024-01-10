@@ -24,7 +24,7 @@ public final class Timeout {
      * @return Timeout struct that represents this simple timeout provided.
      */
     public static final Timeout simpleTimeout(int timeout) {
-        return new Timeout(MAX, timeout, 0, timeout, 0);
+        return new Timeout(MAX, timeout, 2, timeout, 0);
     }
 
     /**
@@ -63,7 +63,7 @@ public final class Timeout {
      * @return Timeout struct that represents this simple timeout provided.
      */
     public Timeout(int timeout) {
-        this(MAX, timeout, 0, timeout, 0);
+        this(MAX, timeout, 2, timeout, 0);
     }
 
     public Timeout(int inter_byte_timeout, int read_timeout_constant, int read_timeout_multiplier, int write_timeout_constant, int write_timeout_multiplier) {

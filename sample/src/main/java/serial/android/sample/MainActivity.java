@@ -49,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
         mSpinnerPorts = (Spinner) findViewById(R.id.spinnerPorts);
         mTextOutput = (TextView) findViewById(R.id.dataReceived);
         mTextInput = (TextView) findViewById(R.id.dataToSend);
-        mTextInput.setText("F5310001000030F5");
         mTextAvailable = (TextView) findViewById(R.id.lblAvailable);
 
         mButtonSend = (Button) findViewById(R.id.btnSend);
@@ -134,18 +133,19 @@ public class MainActivity extends AppCompatActivity {
             mTextInput.setEnabled(false);
             mPort = null;
         } else {
-            clearInput();
+//            clearInput();
             clearOutput();
             PortInfo portInfo = (PortInfo) mSpinnerPorts.getSelectedItem();
             Serial port;
             try {
-                port = new Serial.Builder(portInfo.port, Serial.BAUDRATE_115200).create();
+                port = new Serial.Builder(portInfo.port, 9600).create();
                 if (port.isValid() && port.isOpen()) {
                     mPort = port;
                     mSpinnerPorts.setEnabled(false);
                     mButtonRead.setEnabled(true);
                     mButtonSend.setEnabled(true);
                     mTextInput.setEnabled(true);
+                    mTextInput.setText("F5310001000030F5");
                     checkAvailableData();
                 }
             } catch (SerialIOException e) {
@@ -160,15 +160,38 @@ public class MainActivity extends AppCompatActivity {
         if (mPort != null) {
             String text = mTextInput.getText().toString();
             try {
-                int bytesWritten = mPort.write(text);
-                updateAvailableData();
-                clearInput();
-                Toast.makeText(MainActivity.this, getString(R.string.toast_send_success, bytesWritten, mPort.getPort()), Toast.LENGTH_SHORT).show();
+                clearOutput();
+                int size=207;
+                byte[] data = new byte[size];
+
+
+//                byte[] tempOpenBox = {0x55, (byte) 01, (byte) 0xA1, 0x5F, 0x00, (byte) 0xAA};
+//                int bytesWritten = mPort.write(tempOpenBox, 6);
+
+                byte[] tempReadBox = {(byte) 0xF5, (byte)0x31, 0x00, 0x01, 0x00, 0x00, (byte)0x30, (byte) 0xF5};
+                int bytesWritten = mPort.write(tempReadBox, 8);
+//                updateAvailableData();
+//                clearInput();
+//                Toast.makeText(MainActivity.this, getString(R.string.toast_send_success, bytesWritten, mPort.getPort()), Toast.LENGTH_SHORT).show();
+
+                int nRead=mPort.read(data,0, size);
+                String s = byteArrayInHexString(data, size);
+                System.out.println(s);
+                mTextOutput.append(String.format("read:%d\n", nRead));
+                mTextOutput.append(s);
             } catch (SerialIOException e) {
                 Toast.makeText(MainActivity.this, getString(R.string.toast_send_failed, mPort.getPort()), Toast.LENGTH_SHORT).show();
                 mTextOutput.setText(e.getMessage());
             }
         }
+    }
+
+    public static String byteArrayInHexString(byte[] bytes, int size) {
+        StringBuilder sb = new StringBuilder();
+        for (int i=0;i<size;i++) {
+            sb.append(String.format("%02X ", bytes[i]));
+        }
+        return sb.toString();
     }
 
     public void onReadClick(View view) {
