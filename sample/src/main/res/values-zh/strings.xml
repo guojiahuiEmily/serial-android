@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">libserial 示例</string>
-    <string name="action_connect">链接</string>
+    <string name="action_connect">打开串口</string>
     <string name="action_disconnect">断开</string>
-    <string name="action_read">读取</string>
+    <string name="action_read">清空</string>
     <string name="action_send">发送</string>
     <string name="action_reload">刷新串口</string>
     <string name="hint_hex_mode">Hex 模式</string>

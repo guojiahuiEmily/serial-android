@@ -197,17 +197,17 @@ public class MainActivity extends AppCompatActivity {
     public void onReadClick(View view) {
         if (mPort != null) {
             String[] lines;
-            try {
+//            try {
                 clearOutput();
-                byte[] data = mPort.read();
-                String s = new String(data);
-                mTextOutput.append(s);
-                Toast.makeText(MainActivity.this, getString(R.string.toast_read_success, data.length, mPort.getPort()), Toast.LENGTH_SHORT).show();
-                updateAvailableData();
-            } catch (SerialIOException e) {
-                Toast.makeText(MainActivity.this, getString(R.string.toast_send_failed, mPort.getPort()), Toast.LENGTH_SHORT).show();
-                mTextOutput.setText(e.getMessage());
-            }
+//                byte[] data = mPort.read();
+//                String s = new String(data);
+//                mTextOutput.append(s);
+//                Toast.makeText(MainActivity.this, getString(R.string.toast_read_success, data.length, mPort.getPort()), Toast.LENGTH_SHORT).show();
+//                updateAvailableData();
+//            } catch (SerialIOException e) {
+//                Toast.makeText(MainActivity.this, getString(R.string.toast_send_failed, mPort.getPort()), Toast.LENGTH_SHORT).show();
+//                mTextOutput.setText(e.getMessage());
+//            }
         }
     }
 
