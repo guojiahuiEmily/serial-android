@@ -180,7 +180,7 @@ public class Serial implements Closeable {
 
         private String mPort;
         private int mBaudrate = BAUDRATE_9600;
-        private Timeout mTimeout = Timeout.simpleTimeout(500);
+        private Timeout mTimeout = Timeout.simpleTimeout(200);
         private ByteSize mBytesize = ByteSize.EightBits;
         private Parity mParity = Parity.None;
         private Stopbits mStopbits = Stopbits.One;

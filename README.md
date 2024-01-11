@@ -1,4 +1,14 @@
-## build so
+
+## 优点
+java接收串口数据，在数据量200字节时，存在丢包的问题，所以本项目用c代码进行接收串口数据，完美。
+## 本人修改的内容
+修改代码，解决编译问题；增加catch，避免so崩溃；修改c++的接收函数。
+## 操作说明
+1. 串口号搜 /dev/tty  ，修改为您的串口号
+2. 已含有so文件。将libserial拷贝到您的项目中；
+2. 在settings.gradle文件增加：include ':libserial'
+3. build.gradle 增加 implementation project(path: ':libserial')
+## build so文件的方法
 - 方法1：
 用最新版ndk，在当前根目录下执行./build-libs.sh
 - 方法2：
